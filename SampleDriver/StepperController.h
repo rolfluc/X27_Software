@@ -7,5 +7,17 @@ typedef enum
 	Counterclockwise
 }Direction;
 
+typedef enum
+{
+	Speed_Full,
+	Speed_75,
+	Speed_50,
+	Speed_25,
+	Speed_Size,
+}Speed;
+
 void initPins();
-void Step(uint32_t numberOfMicroSteps_60, Direction dir);
+void InitPWM();
+void StepBlocking(uint32_t numberOfMicroSteps_60, Direction dir);
+void StepNonblocking(uint16_t degreesTenths, Speed speed);
+void InitToZero();
