@@ -19,5 +19,5 @@ typedef enum
 void initPins();
 void InitPWM();
 void StepBlocking(uint32_t numberOfMicroSteps_60, Direction dir);
-void StepNonblocking(uint16_t degreesTenths, Speed speed);
+void StepNonblocking(uint16_t steps, Speed speed);
 void InitToZero();

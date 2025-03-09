@@ -104,14 +104,14 @@ stepcb counterCLockwiseCallbacks[6] = {
 };
 
 
-static const uint32_t maxDegreesTenths = 3150; 
-static const uint32_t tenthsDegreesPerSubstep = 3; 
+static const uint32_t maxDegrees = 315; 
+static const uint32_t maxSteps = maxDegrees * 3; 
 static stepcb* cbDir = clockwiseCallbacks; // Okay to set to CW to start, since will be at 0 degrees
 static StepperMotorState currentState = State_Size;
 static bool running = false;
-static uint32_t currentDegreesTenths = 0; // Actually is zero because we first reset
+static uint32_t currentStep = 0;
 static int8_t dir = 1;
-static uint32_t desiredDegreesTenths = 0;
+static uint32_t desiredStep = 0;
 
 void initPins()
 {
@@ -131,18 +131,15 @@ TIM_HandleTypeDef htim;
 void TIM1_BRK_TIM15_IRQHandler(void)
 {
 	__HAL_TIM_CLEAR_FLAG(&htim, TIM_FLAG_UPDATE);
-	// Below no longer translates 1:1 with Stepper state. It is used to index into the respective cb awway
 	currentState = (currentState + 1) % State_Size;
 	cbDir[(uint8_t)currentState]();
-	currentDegreesTenths += dir*tenthsDegreesPerSubstep;
-	if (currentDegreesTenths == desiredDegreesTenths)
+	currentStep += dir;
+	if (currentStep == desiredStep)
 	{
 		HAL_TIM_Base_Stop_IT(&htim);
+		running = false;
 		StepNone();
 	}
-	
-	// HAL_TIM_Base_Start_IT(&htim);
-	// TODO restart timer?
 }
 
 
@@ -179,41 +176,43 @@ void InitPWM(void)
 }
 
 // TODO void. Void bad.
-void StepNonblocking(uint16_t degreesTenths, Speed speed)
+void StepNonblocking(uint16_t steps, Speed speed)
 {
+	if (running)
+		return;
 	switch (speed)
 	{
 	case Speed_Full:
 		{
-			htim.Instance->PSC = 2;
+			htim.Instance->PSC = 3;
 			break;
 		}
 	case Speed_75:
 		{
-			htim.Instance->PSC = 4;
+			htim.Instance->PSC = 6;
 			break;
 		}
 	case Speed_50:
 		{
-			htim.Instance->PSC = 8;
+			htim.Instance->PSC = 9;
 			break;
 		}
 	case Speed_25:
 		{
-			htim.Instance->PSC = 16;
+			htim.Instance->PSC = 12;
 			break;
 		}
 	default:
 		{
-			htim.Instance->PSC = 16;
+			htim.Instance->PSC = 12;
 			break;
 		}
 	}
-	if (degreesTenths == currentDegreesTenths)
+	if (steps == currentStep)
 	{
 		return;
 	}
-	if (degreesTenths > currentDegreesTenths) 
+	if (steps > currentStep) 
 	{ 
 		dir = 1;
 		cbDir = clockwiseCallbacks;
@@ -223,14 +222,9 @@ void StepNonblocking(uint16_t degreesTenths, Speed speed)
 		dir = -1;
 		cbDir = counterCLockwiseCallbacks;
 	}
-	if (degreesTenths > maxDegreesTenths)
-	{
-		// TODO maybe error?
-		degreesTenths = maxDegreesTenths;
-	}
-	degreesTenths = degreesTenths - (degreesTenths % tenthsDegreesPerSubstep);
-	desiredDegreesTenths = degreesTenths;
+	desiredStep = steps;
 	
+	running = true;
 	//Kick it off!
 	HAL_TIM_Base_Start_IT(&htim);
 }
@@ -259,9 +253,10 @@ void StepBlocking(uint32_t numberOfMicroSteps_60, Direction dir)
 		clockwiseCallbacks[(uint8_t)currentState]();
 		HAL_Delay(1);
 	}
+	StepNone();
 }
 
 void InitToZero()
 {
-	StepBlocking(maxDegreesTenths, Counterclockwise);
+	StepBlocking(maxSteps, Counterclockwise);
 }

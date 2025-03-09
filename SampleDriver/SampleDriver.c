@@ -52,9 +52,9 @@ int main(void)
 
 	for (;;)
 	{
-		HAL_Delay(2500);
-		StepNonblocking(1000, Speed_Full);
-		HAL_Delay(2500);
-		StepNonblocking(2000, Speed_50);
+		HAL_Delay(3500);
+		StepNonblocking(0, Speed_Full);
+		HAL_Delay(3500);
+		StepNonblocking(1000, Speed_50);
 	}
 }
